@@ -20,7 +20,8 @@ dependencies = [
     "click",
     "datasets",
     "ema_pytorch>=0.5.2",
-    "gradio>=3.45.2",
+    "gradio>=3.45.2,<4.0.0",  # Pin to v3 series
+    "gradio-client>=0.5.3,<0.6.0",  # Compatible client version
     "jieba",
     "librosa",
     "matplotlib",
