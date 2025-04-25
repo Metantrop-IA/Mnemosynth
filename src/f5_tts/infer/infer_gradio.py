@@ -165,35 +165,12 @@ NOTA: El modelo actualmente sólo soporta el castellano.
 """
     )
 
-    if not USING_SPACES:
-        load_chat_model_btn = gr.Button("Cargar Modelo de Chat", variant="primary")
+    chat_interface_container = gr.Column()
 
-        chat_interface_container = gr.Column(visible=False)
-
-        @gpu_decorator
-        def load_chat_model():
-            global chat_model_state, chat_tokenizer_state
-            if chat_model_state is None:
-                show_info = gr.Info
-                show_info("Cargando modelo de chat...")
-                model_name = "Qwen/Qwen2.5-3B-Instruct"
-                chat_model_state = AutoModelForCausalLM.from_pretrained(
-                    model_name, torch_dtype="auto", device_map="auto"
-                )
-                chat_tokenizer_state = AutoTokenizer.from_pretrained(model_name)
-                show_info("Modelo de chat cargado.")
-
-            return gr.update(visible=False), gr.update(visible=True)
-
-        load_chat_model_btn.click(load_chat_model, outputs=[load_chat_model_btn, chat_interface_container])
-
-    else:
-        chat_interface_container = gr.Column()
-
-        if chat_model_state is None:
-            model_name = "Qwen/Qwen2.5-3B-Instruct"
-            chat_model_state = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
-            chat_tokenizer_state = AutoTokenizer.from_pretrained(model_name)
+    if chat_model_state is None:
+        model_name = "Qwen/Qwen2.5-3B-Instruct"
+        chat_model_state = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
+        chat_tokenizer_state = AutoTokenizer.from_pretrained(model_name)
 
     with chat_interface_container:
         with gr.Row():
