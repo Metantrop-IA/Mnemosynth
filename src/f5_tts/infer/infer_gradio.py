@@ -172,175 +172,169 @@ NOTA: El modelo actualmente sólo soporta el castellano.
         chat_model_state = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
         chat_tokenizer_state = AutoTokenizer.from_pretrained(model_name)
 
-    with chat_interface_container:
-        with gr.Row():
-            with gr.Column():
-                ref_audio_chat = gr.Audio(label="Audio de Referencia", type="filepath")
-            with gr.Column():
-                with gr.Accordion("Configuraciones Avanzadas", open=False):
-                    model_choice_chat = gr.Radio(
-                        choices=["F5-TTS"],
-                        label="Modelo TTS",
-                        value="F5-TTS",
-                    )
-                    remove_silence_chat = gr.Checkbox(
-                        label="Eliminar Silencios",
-                        value=True,
-                    )
-                    ref_text_chat = gr.Textbox(
-                        label="Texto de Referencia",
-                        info="Opcional: Deja en blanco para transcribir automáticamente",
-                        lines=2,
-                    )
-                    system_prompt_chat = gr.Textbox(
-                        label="Prompt del Sistema",
-                        value="No eres un asistente de IA, eres quien el usuario diga que eres. Debes mantenerte en personaje. Mantén tus respuestas concisas ya que serán habladas en voz alta.",
-                        lines=2,
-                    )
+    # Cargar contenido del prompt inicial y archivos
+    try:
+        with open("../Mnemosynth/Assets/Initial_Prompt.txt", "r", encoding="utf-8") as f:
+            initial_prompt = f.read().strip()
+    except Exception as e:
+        print(f"Error leyendo Initial_Prompt.txt: {e}")
+        initial_prompt = "No eres un asistente de IA, eres quien el usuario diga que eres..."
 
-        chatbot_interface = gr.Chatbot(label="Conversación")
+    try:
+        with open("../Mnemosynth/Assets/Voice_Ref_Trans.txt", "r") as f:
+            voice_ref_trans = f.read().strip()
+    except Exception as e:
+        print(f"Error leyendo archivo Voice_Ref_Trans.txt: {e}")
+        voice_ref_trans = ""
 
-        with gr.Row():
-            with gr.Column():
-                audio_input_chat = gr.Audio(
-                    sources="microphone",
-                    type="filepath",
-                )
-                audio_output_chat = gr.Audio(autoplay=True)
-            with gr.Column():
-                text_input_chat = gr.Textbox(
-                    label="Escribe tu mensaje",
-                    lines=1,
-                )
-                send_btn_chat = gr.Button("Enviar")
-                clear_btn_chat = gr.Button("Limpiar Conversación")
+    # Asignar rutas y valores
+    ref_audio_chat = "../Mnemosynth/Assets/Voice_Ref.wav"
+    model_choice_chat = "F5-TTS"
+    remove_silence_chat = True
+    ref_text_chat = voice_ref_trans
+    system_prompt_chat = initial_prompt
 
-        conversation_state = gr.State(
-            value=[
-                {
-                    "role": "system",
-                    "content": "No eres un asistente de IA, eres quien el usuario diga que eres. Debes mantenerte en personaje. Mantén tus respuestas concisas ya que serán habladas en voz alta.",
-                }
-            ]
-        )
+    chatbot_interface = gr.Chatbot(label="Conversación")
+    with gr.Row():
+        with gr.Column():
+            audio_input_chat = gr.Audio(
+                sources="microphone",
+                type="filepath",
+            )
+            audio_output_chat = gr.Audio(autoplay=True)
+        with gr.Column():
+            text_input_chat = gr.Textbox(
+                label="Escribe tu mensaje",
+                lines=1,
+            )
+            send_btn_chat = gr.Button("Enviar")
+            clear_btn_chat = gr.Button("Limpiar Conversación")
 
-        # Modify process_audio_input to use model and tokenizer from state
-        @gpu_decorator
-        def process_audio_input(audio_path, text, history, conv_state):
-            """Handle audio or text input from user"""
+    conversation_state = gr.State(
+        value=[
+            {
+                "role": "system",
+                "content": initial_prompt
+            }
+        ]
+    )
 
-            if not audio_path and not text.strip():
-                return history, conv_state, ""
+    @gpu_decorator
+    def process_audio_input(audio_path, text, history, conv_state):
+        """Handle audio or text input from user"""
 
-            if audio_path:
-                text = preprocess_ref_audio_text(audio_path, text)[1]
-
-            if not text.strip():
-                return history, conv_state, ""
-
-            conv_state.append({"role": "user", "content": text})
-            history.append((text, None))
-
-            response = generate_response(conv_state, chat_model_state, chat_tokenizer_state)
-
-            conv_state.append({"role": "assistant", "content": response})
-            history[-1] = (text, response)
-
+        if not audio_path and not text.strip():
             return history, conv_state, ""
 
-        @gpu_decorator
-        def generate_audio_response(history, ref_audio, ref_text, model, remove_silence):
-            """Generate TTS audio for AI response"""
-            if not history or not ref_audio:
-                return None
+        if audio_path:
+            text = preprocess_ref_audio_text(audio_path, text)[1]
 
-            last_user_message, last_ai_response = history[-1]
-            if not last_ai_response:
-                return None
+        if not text.strip():
+            return history, conv_state, ""
 
-            audio_result, _ = infer(
-                ref_audio,
-                ref_text,
-                last_ai_response,
-                model,
-                remove_silence,
-                cross_fade_duration=0.15,
-                speed=1.0,
-                show_info=print,  # show_info=print no pull to top when generating
-            )
-            return audio_result
+        conv_state.append({"role": "user", "content": text})
+        history.append((text, None))
 
-        def clear_conversation():
-            """Reset the conversation"""
-            return [], [
-                {
-                    "role": "system",
-                    "content": "No eres un asistente de IA, eres quien el usuario diga que eres. Debes mantenerte en personaje. Mantén tus respuestas concisas ya que serán habladas en voz alta.",
-                }
-            ]
+        response = generate_response(conv_state, chat_model_state, chat_tokenizer_state)
 
-        def update_system_prompt(new_prompt):
-            """Update the system prompt and reset the conversation"""
-            new_conv_state = [{"role": "system", "content": new_prompt}]
-            return [], new_conv_state
+        conv_state.append({"role": "assistant", "content": response})
+        history[-1] = (text, response)
 
-        # Handle audio input
-        audio_input_chat.stop_recording(
-            process_audio_input,
-            inputs=[audio_input_chat, text_input_chat, chatbot_interface, conversation_state],
-            outputs=[chatbot_interface, conversation_state],
-        ).then(
-            generate_audio_response,
-            inputs=[chatbot_interface, ref_audio_chat, ref_text_chat, model_choice_chat, remove_silence_chat],
-            outputs=[audio_output_chat],
-        ).then(
-            lambda: None,
-            None,
-            audio_input_chat,
+        return history, conv_state, ""
+
+    @gpu_decorator
+    def generate_audio_response(history, ref_audio, ref_text, model, remove_silence):
+        """Generate TTS audio for AI response"""
+        if not history or not ref_audio:
+            return None
+
+        last_user_message, last_ai_response = history[-1]
+        if not last_ai_response:
+            return None
+
+        audio_result, _ = infer(
+            ref_audio,
+            ref_text,
+            last_ai_response,
+            model,
+            remove_silence,
+            cross_fade_duration=0.15,
+            speed=1.0,
+            show_info=print,  # show_info=print no pull to top when generating
         )
+        return audio_result
 
-        # Handle text input
-        text_input_chat.submit(
-            process_audio_input,
-            inputs=[audio_input_chat, text_input_chat, chatbot_interface, conversation_state],
-            outputs=[chatbot_interface, conversation_state],
-        ).then(
-            generate_audio_response,
-            inputs=[chatbot_interface, ref_audio_chat, ref_text_chat, model_choice_chat, remove_silence_chat],
-            outputs=[audio_output_chat],
-        ).then(
-            lambda: None,
-            None,
-            text_input_chat,
-        )
+    def clear_conversation():
+        """Reset the conversation"""
+        return [], [
+            {
+                "role": "system",
+                "content": initial_prompt  # Usar el prompt del archivo
+            }
+        ]
 
-        # Handle send button
-        send_btn_chat.click(
-            process_audio_input,
-            inputs=[audio_input_chat, text_input_chat, chatbot_interface, conversation_state],
-            outputs=[chatbot_interface, conversation_state],
-        ).then(
-            generate_audio_response,
-            inputs=[chatbot_interface, ref_audio_chat, ref_text_chat, model_choice_chat, remove_silence_chat],
-            outputs=[audio_output_chat],
-        ).then(
-            lambda: None,
-            None,
-            text_input_chat,
-        )
+    def update_system_prompt(new_prompt):
+        """Update the system prompt and reset the conversation"""
+        new_conv_state = [{"role": "system", "content": new_prompt}]
+        return [], new_conv_state
 
-        # Handle clear button
-        clear_btn_chat.click(
-            clear_conversation,
-            outputs=[chatbot_interface, conversation_state],
-        )
+    # Handle audio input
+    audio_input_chat.stop_recording(
+        process_audio_input,
+        inputs=[audio_input_chat, text_input_chat, chatbot_interface, conversation_state],
+        outputs=[chatbot_interface, conversation_state],
+    ).then(
+        generate_audio_response,
+        inputs=[chatbot_interface, ref_audio_chat, ref_text_chat, model_choice_chat, remove_silence_chat],
+        outputs=[audio_output_chat],
+    ).then(
+        lambda: None,
+        None,
+        audio_input_chat,
+    )
 
-        # Handle system prompt change and reset conversation
-        system_prompt_chat.change(
-            update_system_prompt,
-            inputs=system_prompt_chat,
-            outputs=[chatbot_interface, conversation_state],
-        )
+    # Handle text input
+    text_input_chat.submit(
+        process_audio_input,
+        inputs=[audio_input_chat, text_input_chat, chatbot_interface, conversation_state],
+        outputs=[chatbot_interface, conversation_state],
+    ).then(
+        generate_audio_response,
+        inputs=[chatbot_interface, ref_audio_chat, ref_text_chat, model_choice_chat, remove_silence_chat],
+        outputs=[audio_output_chat],
+    ).then(
+        lambda: None,
+        None,
+        text_input_chat,
+    )
+
+    # Handle send button
+    send_btn_chat.click(
+        process_audio_input,
+        inputs=[audio_input_chat, text_input_chat, chatbot_interface, conversation_state],
+        outputs=[chatbot_interface, conversation_state],
+    ).then(
+        generate_audio_response,
+        inputs=[chatbot_interface, ref_audio_chat, ref_text_chat, model_choice_chat, remove_silence_chat],
+        outputs=[audio_output_chat],
+    ).then(
+        lambda: None,
+        None,
+        text_input_chat,
+    )
+
+    # Handle clear button
+    clear_btn_chat.click(
+        clear_conversation,
+        outputs=[chatbot_interface, conversation_state],
+    )
+
+    # Handle system prompt change and reset conversation
+    system_prompt_chat.change(
+        update_system_prompt,
+        inputs=system_prompt_chat,
+        outputs=[chatbot_interface, conversation_state],
+    )
 ########## TERMINA GRADIO PRINCIPAL ##########
 
 with gr.Blocks() as app_credits:
