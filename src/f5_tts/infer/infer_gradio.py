@@ -174,21 +174,21 @@ NOTA: El modelo actualmente sólo soporta el castellano.
 
     # Cargar contenido del prompt inicial y archivos
     try:
-        with open("../../../../Assets/Initial_Prompt.txt", "r", encoding="utf-8") as f:
+        with open("/workspace/Mnemosynth/Assets/Initial_Prompt.txt", "r", encoding="utf-8") as f:
             initial_prompt = f.read().strip()
     except Exception as e:
         print(f"Error leyendo Initial_Prompt.txt: {e}")
         initial_prompt = "No eres un asistente de IA, eres quien el usuario diga que eres..."
 
     try:
-        with open("../../../../Assets/Voice_Ref_Trans.txt", "r") as f:
+        with open("/workspace/Mnemosynth/Assets/Voice_Ref_Trans.txt", "r") as f:
             voice_ref_trans = f.read().strip()
     except Exception as e:
         print(f"Error leyendo archivo Voice_Ref_Trans.txt: {e}")
         voice_ref_trans = ""
 
     # Asignar rutas y valores usando componentes Gradio
-    ref_audio_chat = gr.Audio(value="../../../../Assets/Voice_Ref.wav", visible=False, type="filepath")
+    ref_audio_chat = gr.Audio(value="/workspace/Mnemosynth/Assets/Voice_Ref.wav", visible=False, type="filepath")
     model_choice_chat = gr.Radio(choices=["F5-TTS"], value="F5-TTS", visible=False)
     remove_silence_chat = gr.Checkbox(value=True, visible=False)
     ref_text_chat = gr.Textbox(value=voice_ref_trans, visible=False)
