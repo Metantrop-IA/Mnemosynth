@@ -174,21 +174,21 @@ NOTA: El modelo actualmente sólo soporta el castellano.
 
     # Cargar contenido del prompt inicial y archivos
     try:
-        with open("../Mnemosynth/Assets/Initial_Prompt.txt", "r", encoding="utf-8") as f:
+        with open("/workspace/Mnemosynth/Assets/Initial_Prompt.txt", "r", encoding="utf-8") as f:
             initial_prompt = f.read().strip()
     except Exception as e:
         print(f"Error leyendo Initial_Prompt.txt: {e}")
         initial_prompt = "No eres un asistente de IA, eres quien el usuario diga que eres..."
 
     try:
-        with open("../Mnemosynth/Assets/Voice_Ref_Trans.txt", "r") as f:
+        with open("/workspace/Mnemosynth/Assets/Voice_Ref_Trans.txt", "r") as f:
             voice_ref_trans = f.read().strip()
     except Exception as e:
         print(f"Error leyendo archivo Voice_Ref_Trans.txt: {e}")
         voice_ref_trans = ""
 
     # Asignar rutas y valores
-    ref_audio_chat = "../Mnemosynth/Assets/Voice_Ref.wav"
+    ref_audio_chat = "/workspace/Mnemosynth/Assets/Voice_Ref.wav"
     model_choice_chat = "F5-TTS"
     remove_silence_chat = True
     ref_text_chat = voice_ref_trans
