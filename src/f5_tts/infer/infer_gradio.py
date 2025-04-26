@@ -174,27 +174,31 @@ NOTA: El modelo actualmente sólo soporta el castellano.
 
     # Cargar contenido del prompt inicial y archivos
     try:
-        with open("/workspace/Mnemosynth/Assets/Initial_Prompt.txt", "r", encoding="utf-8") as f:
+        with open("../../../../Assets/Initial_Prompt.txt", "r", encoding="utf-8") as f:
             initial_prompt = f.read().strip()
     except Exception as e:
         print(f"Error leyendo Initial_Prompt.txt: {e}")
         initial_prompt = "No eres un asistente de IA, eres quien el usuario diga que eres..."
 
     try:
-        with open("/workspace/Mnemosynth/Assets/Voice_Ref_Trans.txt", "r") as f:
+        with open("../../../../Assets/Voice_Ref_Trans.txt", "r") as f:
             voice_ref_trans = f.read().strip()
     except Exception as e:
         print(f"Error leyendo archivo Voice_Ref_Trans.txt: {e}")
         voice_ref_trans = ""
 
-    # Asignar rutas y valores
-    ref_audio_chat = "/workspace/Mnemosynth/Assets/Voice_Ref.wav"
-    model_choice_chat = "F5-TTS"
-    remove_silence_chat = True
-    ref_text_chat = voice_ref_trans
-    system_prompt_chat = initial_prompt
+    # Asignar rutas y valores usando componentes Gradio
+    ref_audio_chat = gr.Audio(value="../../../../Assets/Voice_Ref.wav", visible=False, type="filepath")
+    model_choice_chat = gr.Radio(choices=["F5-TTS"], value="F5-TTS", visible=False)
+    remove_silence_chat = gr.Checkbox(value=True, visible=False)
+    ref_text_chat = gr.Textbox(value=voice_ref_trans, visible=False)
+    system_prompt_chat = gr.Textbox(value=initial_prompt, visible=False)
 
-    chatbot_interface = gr.Chatbot(label="Conversación")
+    chatbot_interface = gr.Chatbot(
+        label="Conversación",
+        type="messages"  # Usar formato messages en lugar de tuples
+    )
+
     with gr.Row():
         with gr.Column():
             audio_input_chat = gr.Audio(
@@ -280,17 +284,13 @@ NOTA: El modelo actualmente sólo soporta el castellano.
 
     # Handle audio input
     audio_input_chat.stop_recording(
-        process_audio_input,
+        fn=process_audio_input,
         inputs=[audio_input_chat, text_input_chat, chatbot_interface, conversation_state],
-        outputs=[chatbot_interface, conversation_state],
+        outputs=[chatbot_interface, conversation_state]
     ).then(
-        generate_audio_response,
+        fn=generate_audio_response,
         inputs=[chatbot_interface, ref_audio_chat, ref_text_chat, model_choice_chat, remove_silence_chat],
-        outputs=[audio_output_chat],
-    ).then(
-        lambda: None,
-        None,
-        audio_input_chat,
+        outputs=audio_output_chat
     )
 
     # Handle text input
