@@ -201,12 +201,12 @@ with gr.Blocks() as app_chat:
     with gr.Row():
         with gr.Column():
             audio_input_chat = gr.Microphone(label="Graba tu mensaje",type="filepath")
-            text_input_chat = gr.Textbox(label="Escribe tu mensaje",lines=1)
-            send_btn_chat = gr.Button("Enviar")
-            clear_btn_chat = gr.Button("Limpiar Conversación")
             audio_output_chat = gr.Audio(autoplay=True, label="Respuesta")
 
         with gr.Column():
+            text_input_chat = gr.Textbox(label="Escribe tu mensaje",lines=1)
+            send_btn_chat = gr.Button("Enviar")
+            clear_btn_chat = gr.Button("Limpiar Conversación")
             chatbot_interface = gr.Chatbot(
             label="Conversación",
             type="messages"  # Usar formato messages en lugar de tuples
