@@ -1,5 +1,6 @@
 import re
 import tempfile
+import os
 
 import click
 import gradio as gr
@@ -156,8 +157,6 @@ with gr.Blocks() as app_chat:
     gr.Markdown(
         """
 # Mnemosynth
-
-
 """
     )
 
@@ -168,22 +167,31 @@ with gr.Blocks() as app_chat:
         chat_model_state = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
         chat_tokenizer_state = AutoTokenizer.from_pretrained(model_name)
 
+    # Construir rutas absolutas a los assets
+    ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../Assets"))
+    initial_prompt_path = os.path.join(ASSETS_DIR, "Initial_Prompt.txt")
+    voice_ref_trans_path = os.path.join(ASSETS_DIR, "Voice_Ref_Trans.txt")
+    voice_ref_wav_path = os.path.join(ASSETS_DIR, "Voice_Ref.wav")
+
     # Cargar contenido del prompt inicial y archivos
     try:
-        with open("/workspace/Mnemosynth/Assets/Initial_Prompt.txt", "r", encoding="utf-8") as f:
+        with open(initial_prompt_path, "r", encoding="utf-8") as f:
             initial_prompt = f.read().strip()
+            print(f"Archivo Initial_Prompt.txt cargado exitosamente en: {initial_prompt_path}")
     except Exception as e:
-        print(f"Error leyendo Initial_Prompt.txt: {e}")
-
+        print(f"Error leyendo Initial_Prompt.txt en {initial_prompt_path}: {e}")
+        initial_prompt = "No eres un asistente de IA."
 
     try:
-        with open("/workspace/Mnemosynth/Assets/Voice_Ref_Trans.txt", "r") as f:
+        with open(voice_ref_trans_path, "r") as f:
             voice_ref_trans = f.read().strip()
+            print(f"Archivo Voice_Ref_Trans.txt cargado exitosamente en: {voice_ref_trans_path}")
     except Exception as e:
-        print(f"Error leyendo archivo Voice_Ref_Trans.txt: {e}")
+        print(f"Error leyendo archivo Voice_Ref_Trans.txt en {voice_ref_trans_path}: {e}")
+        voice_ref_trans = ""
 
     # Asignar rutas y valores usando componentes Gradio
-    ref_audio_chat = gr.Audio(value="/workspace/Mnemosynth/Assets/Voice_Ref.wav", visible=False, type="filepath")
+    ref_audio_chat = gr.Audio(value=voice_ref_wav_path, visible=False, type="filepath")
     model_choice_chat = gr.Radio(choices=["F5-TTS"], label="Seleccionar Modelo TTS", value="F5-TTS", visible=False)
     remove_silence_chat = gr.Checkbox(value=True, visible=False)
     ref_text_chat = gr.Textbox(value=voice_ref_trans, visible=False)
