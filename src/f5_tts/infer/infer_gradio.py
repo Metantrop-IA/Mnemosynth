@@ -168,7 +168,7 @@ with gr.Blocks() as app_chat:
         chat_tokenizer_state = AutoTokenizer.from_pretrained(model_name)
 
     # Construir rutas absolutas a los assets
-    ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "/Assets"))
+    ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "Assets"))
     initial_prompt_path = os.path.join(ASSETS_DIR, "Initial_Prompt.txt")
     voice_ref_trans_path = os.path.join(ASSETS_DIR, "Voice_Ref_Trans.txt")
     voice_ref_wav_path = os.path.join(ASSETS_DIR, "Voice_Ref.wav")
@@ -180,7 +180,7 @@ with gr.Blocks() as app_chat:
             print(f"Archivo Initial_Prompt.txt cargado exitosamente en: {initial_prompt_path}")
     except Exception as e:
         print(f"Error leyendo Initial_Prompt.txt en {initial_prompt_path}: {e}")
-        initial_prompt = "No eres un asistente de IA."
+        initial_prompt = "No eres un asistente de IA, eres quien el usuario diga que eres..."
 
     try:
         with open(voice_ref_trans_path, "r") as f:
