@@ -88,7 +88,7 @@ def chunk_text(text, max_chars=135):
 
 # load vocoder
 def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=device):
-    if vocoder_name == "vocos":
+    if vocer_name == "vocos":
         if is_local:
             print(f"Load vocos from local path {local_path}")
             vocoder = Vocos.from_hparams(f"{local_path}/config.yaml")
@@ -116,21 +116,13 @@ def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=dev
 
 # load asr pipeline
 
-asr_pipe = None
-
-
-def initialize_asr_pipeline(device=device, dtype=None):
-    if dtype is None:
-        dtype = (
-            torch.float16 if device == "cuda" and torch.cuda.get_device_properties(device).major >= 6 else torch.float32
-        )
-    global asr_pipe
-    asr_pipe = pipeline(
-        "automatic-speech-recognition",
-        model="openai/whisper-large-v3-turbo",
-        torch_dtype=dtype,
-        device=device,
-    )
+asr_pipe = pipeline(
+    "automatic-speech-recognition",
+    model="openai/whisper-large-v3-turbo",
+    torch_dtype=dtype,
+    device=device,
+    generate_kwargs={"task": "transcribe", "language": "es"}  # Especificar Español
+)
 
 
 # load model checkpoint for inference

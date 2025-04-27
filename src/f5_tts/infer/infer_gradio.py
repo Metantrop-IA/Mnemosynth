@@ -10,6 +10,8 @@ import torchaudio
 from cached_path import cached_path
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from num2words import num2words
+from sentence_transformers import SentenceTransformer
+import faiss
 
 try:
     import spaces
@@ -171,6 +173,7 @@ with gr.Blocks() as app_chat:
     ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "Assets"))
     initial_prompt_path = os.path.join(ASSETS_DIR, "Initial_Prompt.txt")
     voice_ref_trans_path = os.path.join(ASSETS_DIR, "Voice_Ref_Trans.txt")
+    docs_RAG_path = os.path.join(ASSETS_DIR, "Docs_RAG.txt")
     voice_ref_wav_path = os.path.join(ASSETS_DIR, "Voice_Ref.wav")
 
     # Cargar contenido del prompt inicial y archivos
@@ -181,6 +184,14 @@ with gr.Blocks() as app_chat:
     except Exception as e:
         print(f"Error leyendo Initial_Prompt.txt en {initial_prompt_path}: {e}")
         initial_prompt = "No eres un asistente de IA, eres quien el usuario diga que eres..."
+
+    try:
+        with open(docs_RAG_path, "r", encoding="utf-8") as f:
+            docs = f.read().strip()
+            print(f"Archivo Docs_RAG.txt cargado exitosamente en: {docs_RAG_path}")
+    except Exception as e:
+        print(f"Error leyendo Docs_RAG.txt en {docs_RAG_path}: {e}")
+        docs = ""
 
     try:
         with open(voice_ref_trans_path, "r") as f:
@@ -197,7 +208,18 @@ with gr.Blocks() as app_chat:
     ref_text_chat = gr.Textbox(value=voice_ref_trans, visible=False)
     system_prompt_chat = gr.Textbox(value=initial_prompt, visible=False)
 
+    # Creacion del índice FAISS
+    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    doc_embeddings = embedding_model.encode(docs, convert_to_numpy=True)
+    index = faiss.IndexFlatL2(doc_embeddings.shape[1])
+    index.add(doc_embeddings)
 
+    def retrieve_context(query, top_k=3):
+        query_emb = embedding_model.encode([query], convert_to_numpy=True)
+        D, I = index.search(query_emb, top_k)
+        return [docs[i] for i in I[0]]
+
+    #Crea la interfaz de Gradio 
     with gr.Row():
         with gr.Column():
             audio_input_chat = gr.Microphone(label="Graba tu mensaje",type="filepath")
@@ -222,9 +244,9 @@ with gr.Blocks() as app_chat:
         ]
     )
 
+
     @gpu_decorator
     def process_audio_input(audio_path, text, history, conv_state):
-        """Handle audio or text input from user"""
         if not audio_path and not text.strip():
             return history, conv_state
 
@@ -234,12 +256,15 @@ with gr.Blocks() as app_chat:
         if not text.strip():
             return history, conv_state
 
-        # Update conversation state
+        # --- RAG: Recupera contexto relevante ---
+        contexto = " ".join(retrieve_context(text, top_k=3))
+        # Puedes incluir el contexto como parte del mensaje del sistema o del usuario
+        conv_state.append({"role": "system", "content": f"Contexto relevante: {contexto}"})
         conv_state.append({"role": "user", "content": text})
+
         response = generate_response(conv_state, chat_model_state, chat_tokenizer_state)
         conv_state.append({"role": "assistant", "content": response})
 
-        # Update chat history with proper message format
         if not history:
             history = []
         history.extend([
