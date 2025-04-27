@@ -156,12 +156,8 @@ with gr.Blocks() as app_chat:
     gr.Markdown(
         """
 # Mnemosynth
-1. Carga el modelo de chat.
-2. Sube un clip de audio de referencia y opcionalmente su transcripción. Para los mejores resultados, intenta convertir tu audio de referencia a WAV o MP3, asegurarte de que duren entre 11 y 14 segundos, que comiencen y acaben con entre medio segundo y un segundo de silencio, y a ser posible que acabe con el final de la frase.
-3. Graba tu mensaje a través de tu micrófono o escribe tu pregunta.
-4. La IA responderá usando la voz de referencia.
 
-NOTA: El modelo actualmente sólo soporta el castellano.
+
 """
     )
 
@@ -178,18 +174,17 @@ NOTA: El modelo actualmente sólo soporta el castellano.
             initial_prompt = f.read().strip()
     except Exception as e:
         print(f"Error leyendo Initial_Prompt.txt: {e}")
-        initial_prompt = "No eres un asistente de IA, eres quien el usuario diga que eres..."
+
 
     try:
         with open("/workspace/Mnemosynth/Assets/Voice_Ref_Trans.txt", "r") as f:
             voice_ref_trans = f.read().strip()
     except Exception as e:
         print(f"Error leyendo archivo Voice_Ref_Trans.txt: {e}")
-        voice_ref_trans = ""
 
     # Asignar rutas y valores usando componentes Gradio
     ref_audio_chat = gr.Audio(value="/workspace/Mnemosynth/Assets/Voice_Ref.wav", visible=False, type="filepath")
-    model_choice_chat = gr.Radio(choices=["F5-TTS"], value="F5-TTS", visible=False)
+    model_choice_chat = gr.Radio(choices=["F5-TTS"], label="Seleccionar Modelo TTS", value="F5-TTS", visible=False)
     remove_silence_chat = gr.Checkbox(value=True, visible=False)
     ref_text_chat = gr.Textbox(value=voice_ref_trans, visible=False)
     system_prompt_chat = gr.Textbox(value=initial_prompt, visible=False)
@@ -201,8 +196,8 @@ NOTA: El modelo actualmente sólo soporta el castellano.
 
     with gr.Row():
         with gr.Column():
-            audio_input_chat = gr.Audio(
-                sources="microphone",
+            audio_input_chat = gr.Microphone(
+                label="Habla tu mensaje",
                 type="filepath",
             )
             audio_output_chat = gr.Audio(autoplay=True)
@@ -226,25 +221,29 @@ NOTA: El modelo actualmente sólo soporta el castellano.
     @gpu_decorator
     def process_audio_input(audio_path, text, history, conv_state):
         """Handle audio or text input from user"""
-
         if not audio_path and not text.strip():
-            return history, conv_state, ""
+            return history, conv_state
 
         if audio_path:
             text = preprocess_ref_audio_text(audio_path, text)[1]
 
         if not text.strip():
-            return history, conv_state, ""
+            return history, conv_state
 
+        # Update conversation state
         conv_state.append({"role": "user", "content": text})
-        history.append((text, None))
-
         response = generate_response(conv_state, chat_model_state, chat_tokenizer_state)
-
         conv_state.append({"role": "assistant", "content": response})
-        history[-1] = (text, response)
 
-        return history, conv_state, ""
+        # Update chat history with proper message format
+        if not history:
+            history = []
+        history.extend([
+            {"role": "user", "content": text},
+            {"role": "assistant", "content": response}
+        ])
+
+        return history, conv_state
 
     @gpu_decorator
     def generate_audio_response(history, ref_audio, ref_text, model, remove_silence):
@@ -252,19 +251,21 @@ NOTA: El modelo actualmente sólo soporta el castellano.
         if not history or not ref_audio:
             return None
 
-        last_user_message, last_ai_response = history[-1]
-        if not last_ai_response:
+        # Get last assistant message
+        last_message = next((msg for msg in reversed(history) 
+                           if msg["role"] == "assistant"), None)
+        if not last_message:
             return None
 
         audio_result, _ = infer(
             ref_audio,
             ref_text,
-            last_ai_response,
+            last_message["content"],
             model,
             remove_silence,
             cross_fade_duration=0.15,
             speed=1.0,
-            show_info=print,  # show_info=print no pull to top when generating
+            show_info=print
         )
         return audio_result
 
@@ -290,7 +291,7 @@ NOTA: El modelo actualmente sólo soporta el castellano.
     ).then(
         fn=generate_audio_response,
         inputs=[chatbot_interface, ref_audio_chat, ref_text_chat, model_choice_chat, remove_silence_chat],
-        outputs=audio_output_chat
+        outputs=[audio_output_chat]
     )
 
     # Handle text input
