@@ -197,25 +197,21 @@ with gr.Blocks() as app_chat:
     ref_text_chat = gr.Textbox(value=voice_ref_trans, visible=False)
     system_prompt_chat = gr.Textbox(value=initial_prompt, visible=False)
 
-    chatbot_interface = gr.Chatbot(
-        label="Conversación",
-        type="messages"  # Usar formato messages en lugar de tuples
-    )
 
     with gr.Row():
         with gr.Column():
-            audio_input_chat = gr.Microphone(
-                label="Habla tu mensaje",
-                type="filepath",
-            )
-            audio_output_chat = gr.Audio(autoplay=True)
+            audio_input_chat = gr.Microphone(label="Graba tu mensaje",type="filepath")
         with gr.Column():
-            text_input_chat = gr.Textbox(
-                label="Escribe tu mensaje",
-                lines=1,
-            )
-            send_btn_chat = gr.Button("Enviar")
-            clear_btn_chat = gr.Button("Limpiar Conversación")
+            audio_output_chat = gr.Audio(autoplay=True, label="Respuesta")
+    with gr.Row():
+        text_input_chat = gr.Textbox(label="Escribe tu mensaje",lines=1)
+        send_btn_chat = gr.Button("Enviar")
+        clear_btn_chat = gr.Button("Limpiar Conversación")
+    with gr.Row():
+        chatbot_interface = gr.Chatbot(
+            label="Conversación",
+            type="messages"  # Usar formato messages en lugar de tuples
+        )
 
     conversation_state = gr.State(
         value=[
