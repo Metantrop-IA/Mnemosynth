@@ -201,23 +201,34 @@ with gr.Blocks() as app_chat:
         print(f"Error leyendo archivo Voice_Ref_Trans.txt en {voice_ref_trans_path}: {e}")
         voice_ref_trans = ""
 
+    # Convertir docs a lista de documentos (por líneas no vacías)
+    docs_list = [line.strip() for line in docs.splitlines() if line.strip()]
+
+    # Verificación: si no hay documentos, evitar crear el índice FAISS
+    if not docs_list:
+        print("ADVERTENCIA: Docs_RAG.txt está vacío. No se creará el índice FAISS y la recuperación de contexto estará deshabilitada.")
+        embedding_model = None
+        index = None
+        def retrieve_context(query, top_k=3):
+            return []
+    else:
+        # Creacion del índice FAISS
+        embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        doc_embeddings = embedding_model.encode(docs_list, convert_to_numpy=True)
+        index = faiss.IndexFlatL2(doc_embeddings.shape[1])
+        index.add(doc_embeddings)
+
+        def retrieve_context(query, top_k=3):
+            query_emb = embedding_model.encode([query], convert_to_numpy=True)
+            D, I = index.search(query_emb, top_k)
+            return [docs_list[i] for i in I[0]]
+
     # Asignar rutas y valores usando componentes Gradio
     ref_audio_chat = gr.Audio(value=voice_ref_wav_path, visible=False, type="filepath")
     model_choice_chat = gr.Radio(choices=["F5-TTS"], label="Seleccionar Modelo TTS", value="F5-TTS", visible=False)
     remove_silence_chat = gr.Checkbox(value=True, visible=False)
     ref_text_chat = gr.Textbox(value=voice_ref_trans, visible=False)
     system_prompt_chat = gr.Textbox(value=initial_prompt, visible=False)
-
-    # Creacion del índice FAISS
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-    doc_embeddings = embedding_model.encode(docs, convert_to_numpy=True)
-    index = faiss.IndexFlatL2(doc_embeddings.shape[1])
-    index.add(doc_embeddings)
-
-    def retrieve_context(query, top_k=3):
-        query_emb = embedding_model.encode([query], convert_to_numpy=True)
-        D, I = index.search(query_emb, top_k)
-        return [docs[i] for i in I[0]]
 
     #Crea la interfaz de Gradio 
     with gr.Row():

@@ -88,7 +88,7 @@ def chunk_text(text, max_chars=135):
 
 # load vocoder
 def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=device):
-    if vocer_name == "vocos":
+    if vocoder_name == "vocos":
         if is_local:
             print(f"Load vocos from local path {local_path}")
             vocoder = Vocos.from_hparams(f"{local_path}/config.yaml")
@@ -113,6 +113,12 @@ def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=dev
         vocoder = vocoder.eval().to(device)
     return vocoder
 
+
+# Define dtype for torch_dtype usage
+try:
+    dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+except Exception:
+    dtype = torch.float32
 
 # load asr pipeline
 
